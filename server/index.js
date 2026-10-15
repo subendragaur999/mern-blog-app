@@ -18,20 +18,38 @@ const connectDB = async () => {
     console.log(`DB connected...!`);
   } catch (error) {
     console.log(error);
-  }
+process.exit(1);  
+}
 };
 
 const corsPolicy = {
-  origin: ["http://localhost:5173"],
+  origin: process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(",")
+    : ["http://localhost:5173"],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type", "authorization"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   exposedHeaders: ["Content-Type"],
 };
 
 // Middlewares
 app.use(cors(corsPolicy));
 app.use(express.json());
+app.get("/health", (req, res) => {
+  const databaseConnected = mongoose.connection.readyState === 1;
+
+  if (!databaseConnected) {
+    return res.status(503).json({
+      status: "unhealthy",
+      database: "disconnected",
+    });
+  }
+
+  return res.status(200).json({
+    status: "healthy",
+    database: "connected",
+  });
+});
 app.use("/api/v1/blog", BlogRoutes);
 app.use("/api/v1/auth", AuthRoutes);
 app.use("/api/v1/user", UserRoutes);
